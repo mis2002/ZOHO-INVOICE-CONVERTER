@@ -242,14 +242,18 @@ const ECOM_OPERATOR_GSTIN = "07AAMCP7214N1ZW";
 const BRANCH_NAME = "Delhi- Online";
 const SALESPERSON = "PICKNPACK";
 
+// Zoho's Place of Supply field only accepts this exact fixed set of 2-letter codes.
+const ZOHO_VALID_CODES = new Set(["AN","AD","AR","AS","BR","CH","CG","DN","DD","DL","GA","GJ","HR","HP","JK","JH","KA","KL","LD","MP","MH","MN","ML","MZ","NL","OD","PY","PB","RJ","SK","TN","TS","TR","UP","UK","WB"]);
+
 const STATE_MAP = {
-  "andhra pradesh":"AD","arunachal pradesh":"AR","assam":"AS","bihar":"BR","chhattisgarh":"CT",
+  "andhra pradesh":"AD","arunachal pradesh":"AR","assam":"AS","bihar":"BR","chhattisgarh":"CG",
   "goa":"GA","gujarat":"GJ","haryana":"HR","himachal pradesh":"HP","jharkhand":"JH","karnataka":"KA",
   "kerala":"KL","madhya pradesh":"MP","maharashtra":"MH","manipur":"MN","meghalaya":"ML","mizoram":"MZ",
   "nagaland":"NL","odisha":"OD","punjab":"PB","rajasthan":"RJ","sikkim":"SK","tamil nadu":"TN",
   "telangana":"TS","tripura":"TR","uttar pradesh":"UP","uttarakhand":"UK","west bengal":"WB",
-  "andaman and nicobar islands":"AN","chandigarh":"CH","dadra and nagar haveli and daman and diu":"DN",
-  "delhi":"DL","jammu and kashmir":"JK","ladakh":"LA","lakshadweep":"LD","puducherry":"PY","pondicherry":"PY"
+  "andaman and nicobar islands":"AN","chandigarh":"CH",
+  "dadra and nagar haveli":"DN","daman and diu":"DD","dadra and nagar haveli and daman and diu":"DN",
+  "delhi":"DL","jammu and kashmir":"JK","lakshadweep":"LD","puducherry":"PY","pondicherry":"PY"
 };
 
 function normHeader(h){ return String(h).toLowerCase().replace(/[^a-z0-9]/g,""); }
@@ -277,32 +281,44 @@ const STATE_CANON = {
   "sikkim":"Sikkim","tamil nadu":"Tamil Nadu","telangana":"Telangana","tripura":"Tripura",
   "uttar pradesh":"Uttar Pradesh","uttarakhand":"Uttarakhand","west bengal":"West Bengal",
   "andaman and nicobar islands":"Andaman and Nicobar Islands","chandigarh":"Chandigarh",
+  "dadra and nagar haveli":"Dadra and Nagar Haveli","daman and diu":"Daman and Diu",
   "dadra and nagar haveli and daman and diu":"Dadra and Nagar Haveli and Daman and Diu","delhi":"Delhi",
-  "jammu and kashmir":"Jammu and Kashmir","ladakh":"Ladakh","lakshadweep":"Lakshadweep",
-  "puducherry":"Puducherry","pondicherry":"Puducherry"
+  "jammu and kashmir":"Jammu and Kashmir","lakshadweep":"Lakshadweep",
+  "puducherry":"Puducherry","pondicherry":"Puducherry","ladakh":"Ladakh"
 };
 function canonState(s){
   const key = normState(s);
   return STATE_CANON[key] || cleanStr(s);
 }
 
-// Some exports give 2-letter state codes directly instead of full names (e.g. "UP", "MH")
+// Some exports give 2-letter state codes directly instead of full names (e.g. "UP", "MH").
+// This maps any such abbreviation (including legacy ones like "CT") to the full state name,
+// so the OFFICIAL Zoho code is always looked up fresh rather than trusting the source's own code.
 const STATE_CODE_TO_NAME = {
-  "ad":"Andhra Pradesh","ar":"Arunachal Pradesh","as":"Assam","br":"Bihar","ct":"Chhattisgarh",
+  "ad":"Andhra Pradesh","ar":"Arunachal Pradesh","as":"Assam","br":"Bihar",
+  "cg":"Chhattisgarh","ct":"Chhattisgarh",
   "ga":"Goa","gj":"Gujarat","hr":"Haryana","hp":"Himachal Pradesh","jh":"Jharkhand","ka":"Karnataka",
   "kl":"Kerala","mp":"Madhya Pradesh","mh":"Maharashtra","mn":"Manipur","ml":"Meghalaya","mz":"Mizoram",
   "nl":"Nagaland","od":"Odisha","pb":"Punjab","rj":"Rajasthan","sk":"Sikkim","tn":"Tamil Nadu",
   "ts":"Telangana","tr":"Tripura","up":"Uttar Pradesh","uk":"Uttarakhand","wb":"West Bengal",
-  "an":"Andaman and Nicobar Islands","ch":"Chandigarh","dn":"Dadra and Nagar Haveli and Daman and Diu",
+  "an":"Andaman and Nicobar Islands","ch":"Chandigarh",
+  "dn":"Dadra and Nagar Haveli","dd":"Daman and Diu",
   "dl":"Delhi","jk":"Jammu and Kashmir","la":"Ladakh","ld":"Lakshadweep","py":"Puducherry"
 };
-// Resolves a state value (full name OR 2-letter code) to {code, name}. Returns null if unrecognized.
+// Resolves a state value (full name OR 2-letter code) to {code, name, zohoValid}.
+// The code always comes from STATE_MAP (the official Zoho list) — never echoed straight from the source.
 function resolveState(raw){
+  let fullName = null;
   const key = normState(raw);
-  if(STATE_MAP[key]) return { code: STATE_MAP[key], name: STATE_CANON[key] };
-  const short = cleanStr(raw).toLowerCase();
-  if(STATE_CODE_TO_NAME[short]) return { code: short.toUpperCase(), name: STATE_CODE_TO_NAME[short] };
-  return null;
+  if(STATE_CANON[key]){ fullName = STATE_CANON[key]; }
+  else{
+    const short = cleanStr(raw).toLowerCase();
+    if(STATE_CODE_TO_NAME[short]) fullName = STATE_CODE_TO_NAME[short];
+  }
+  if(!fullName) return null;
+  const nameKey = normState(fullName);
+  const code = STATE_MAP[nameKey] || null;
+  return { code: code, name: fullName, zohoValid: code ? ZOHO_VALID_CODES.has(code) : false };
 }
 
 function cleanStr(v){
@@ -455,12 +471,15 @@ function processWorkbook(arrayBuffer){
     const shipStateRaw = cleanStr(row[K.shipState]);
     const sellerStateRaw = cleanStr(row[K.sellerState]);
     const stateInfo = resolveState(shipStateRaw);
-    const placeCode = stateInfo ? stateInfo.code : "";
+    const placeCode = (stateInfo && stateInfo.zohoValid) ? stateInfo.code : "";
     const billingStateOut = stateInfo ? stateInfo.name : shipStateRaw;
     let rowNote = "";
     if(!stateInfo){
       warnings.push("Order " + orderId + ": state '" + shipStateRaw + "' was not recognized — Place of Supply left blank.");
       rowNote = "CHECK: Place of Supply — state '" + shipStateRaw + "' not recognized. Fill manually before importing.";
+    }else if(!stateInfo.zohoValid){
+      warnings.push("Order " + orderId + ": '" + stateInfo.name + "' has no Zoho Place of Supply code (code '" + stateInfo.code + "' isn't in Zoho's accepted list) — left blank.");
+      rowNote = "CHECK: Place of Supply — Zoho has no code for '" + stateInfo.name + "'. Fill manually before importing.";
     }
 
     const sameState = normState(shipStateRaw) === normState(sellerStateRaw) && shipStateRaw !== "";
