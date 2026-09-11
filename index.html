@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myntra &amp; Meesho → Zoho Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --border:#e6e8ec;
+    --ink:#1a1f2b;
+    --ink-soft:#727889;
+    --accent:#2f6f62;
+    --accent-deep:#245850;
+    --accent-soft:#eaf3f0;
+    --danger:#c2503e;
+    --danger-soft:#fbece8;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    padding: 36px 16px 60px;
+    line-height:1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{ max-width: 720px; margin: 0 auto; }
+
+  .masthead{ margin-bottom: 26px; }
+  .masthead .tag{
+    font-size:12px; font-weight:600; letter-spacing:.04em; color: var(--accent);
+  }
+  .masthead h1{
+    font-size: 26px; font-weight:700; margin:6px 0 6px; letter-spacing:-0.01em;
+  }
+  .masthead .sub{ font-size:14px; color: var(--ink-soft); }
+
+  .step{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 2px rgba(20,20,30,0.03);
+  }
+  .step-head{ display:flex; align-items:center; gap:11px; margin-bottom:12px; }
+  .step-num{
+    font-weight:700; font-size:13px;
+    color: #fff; background: var(--accent); border-radius:50%;
+    width:24px; height:24px; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .step-title{ font-weight:600; font-size:15px; color: var(--ink); }
+  .step-body{ padding-left: 35px; }
+  .hint{ color: var(--ink-soft); font-size:13px; margin: 8px 0 0; line-height:1.5; }
+
+  .drop{
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s, background .15s;
+    background: #fbfbfc;
+  }
+  .drop:hover, .drop.drag{ border-color: var(--accent); background: var(--accent-soft); }
+  .drop input{ display:none; }
+  .drop .fname{ font-family: var(--mono); font-size: 13px; color: var(--accent-deep); margin-top:8px; word-break:break-all; font-weight:500; }
+  .drop .placeholder{ font-size:14px; color: var(--ink-soft); }
+
+  label.field-label{ display:block; font-size:13px; font-weight:500; margin-bottom:7px; color: var(--ink-soft); }
+  input[type=text], input[type=date]{
+    width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:8px;
+    font-size:14.5px; font-family: var(--mono); background:#fff; color:var(--ink);
+  }
+  input[type=text]:focus, input[type=date]:focus{ outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .row2{ display:flex; gap:14px; flex-wrap:wrap; }
+  .row2 > div{ flex:1; min-width:220px; }
+
+  button.convert{
+    width:100%; padding:15px; font-size:15px; font-weight:600;
+    font-family: var(--sans);
+    background: var(--accent); color:#fff; border:none;
+    border-radius: 10px;
+    cursor:pointer; margin-top:4px;
+    transition: background .15s;
+  }
+  button.convert:disabled{ background:#c7ccd6; cursor:not-allowed; }
+  button.convert:hover:not(:disabled){ background: var(--accent-deep); }
+
+  .result{ margin-top:16px; }
+  .result.hidden{ display:none; }
+  .summary{
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px;
+    box-shadow: 0 1px 2px rgba(20,20,30,0.03);
+  }
+  .summary h3{
+    margin:0 0 14px; font-size:15px; font-weight:600; color: var(--accent-deep);
+  }
+  .kv{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:14px;}
+  .kv:last-child{ border-bottom:none; }
+  .kv span{ color: var(--ink-soft); }
+  .kv b{ font-family: var(--mono); font-weight:600; }
+  .warn{
+    margin-top:14px; padding:13px 15px; background: var(--danger-soft); border-left:3px solid var(--danger);
+    border-radius:8px; font-size:13px; color:#8a3628;
+  }
+  .warn ul{ margin:6px 0 0; padding-left:18px; }
+  .err{
+    margin-top:12px; padding:13px 15px; background: var(--danger-soft); border-left:3px solid var(--danger);
+    border-radius:8px; font-size:14px; color:#8a3628;
+  }
+  .status{ font-size:13px; color: var(--ink-soft); margin-top:8px; }
+  .footnote{ margin-top: 26px; font-size:12px; color: var(--ink-soft); text-align:center; }
+
+  .tabbar{ display:flex; gap:8px; margin-bottom:20px; }
+  .tabbtn{
+    flex:1; padding:11px; border-radius:10px; border:1px solid var(--border);
+    background:#fff; font-weight:600; font-size:13.5px; color: var(--ink-soft);
+    cursor:pointer; font-family: var(--sans); transition: background .15s, color .15s, border-color .15s;
+  }
+  .tabbtn.active{ background: var(--accent); color:#fff; border-color: var(--accent); }
+  .tabbtn:hover:not(.active){ border-color: var(--accent); color: var(--accent-deep); }
+  .panel.hidden{ display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="tag">Picknpack · Zoho Import Toolkit</div>
+    <h1>Zoho Import Toolkit</h1>
+    <div class="sub">Convert marketplace reports into ready-to-import Zoho files.</div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tabbtn active" id="tabBtnInvoice" type="button">Invoice Converter</button>
+    <button class="tabbtn" id="tabBtnPayment" type="button">Payment Receipt</button>
+  </div>
+
+  <div class="panel" id="panelInvoice">
+
+  <div class="step">
+    <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the report</div></div>
+    <div class="step-body">
+      <div class="drop" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+        <div class="placeholder" id="dropText">Click to choose your downloaded Myntra/Meesho .xlsx file</div>
+        <div class="fname" id="fileName"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="step">
+      <div class="step-head"><div class="step-num">2</div><div class="step-title">Last invoice number</div></div>
+      <div class="step-body">
+        <label class="field-label" for="lastInvoice">The last number already used</label>
+        <input type="text" id="lastInvoice" placeholder="ECOM/26-27/17218">
+        <p class="hint">Every new order will get the next number after this one. Once entered, it's remembered for next time.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><div class="step-num">3</div><div class="step-title">Invoice date</div></div>
+      <div class="step-body">
+        <label class="field-label" for="invoiceDate">Applied to every row</label>
+        <input type="date" id="invoiceDate">
+      </div>
+    </div>
+  </div>
+
+  <button class="convert" id="convertBtn" disabled>Upload a file to get started</button>
+  <div class="status" id="status"></div>
+
+  <div class="result hidden" id="resultBox">
+    <div class="summary" id="summary"></div>
+  </div>
+  </div>
+
+  <div class="panel hidden" id="panelPayment">
+    <div class="step">
+      <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the settlement report</div></div>
+      <div class="step-body">
+        <div class="drop" id="dropZone2">
+          <input type="file" id="fileInput2" accept=".xlsx,.xls">
+          <div class="placeholder" id="dropText2">Click to choose your downloaded Payment Settlement (Meesho &amp; Myntra) .xlsx file</div>
+          <div class="fname" id="fileName2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="step">
+        <div class="step-head"><div class="step-num">2</div><div class="step-title">Payment number</div></div>
+        <div class="step-body">
+          <label class="field-label" for="prefixInput">Prefix</label>
+          <input type="text" id="prefixInput" placeholder="CF-SETL-">
+          <label class="field-label" style="margin-top:12px;" for="suffixInput">Starting number</label>
+          <input type="text" id="suffixInput" placeholder="11634">
+          <p class="hint">Used for the first payment in this file; every next one gets +1. Remembered automatically for next time.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><div class="step-num">3</div><div class="step-title">Payment date</div></div>
+        <div class="step-body">
+          <label class="field-label" for="paymentDate">Applied to every row</label>
+          <input type="date" id="paymentDate">
+        </div>
+      </div>
+    </div>
+
+    <button class="convert" id="convertBtn2" disabled>Upload a file to get started</button>
+    <div class="status" id="status2"></div>
+
+    <div class="result hidden" id="resultBox2">
+      <div class="summary" id="summary2"></div>
+    </div>
+  </div>
+
+  <div class="footnote">Everything is processed right here in your browser — no file is ever uploaded anywhere.</div>
+</div>
+
+<script>
+const HEADERS = ["Invoice Number","Invoice Date","Customer Name","GST Treatment","GST Identification Number (GSTIN)","Place of Supply","Sales order id","Payment Terms","Payment Terms Label","Due Date","Currency Code","Exchange Rate","Account","SKU","Item Name","Item Desc","Item Type","HSN/SAC","Quantity","Usage unit","Item Price","Is Inclusive Tax","Item Tax","Item Tax Type","Item Tax %","Is Discount Before Tax","Entity Discount Percent","Entity Discount Amount","Discount","Discount Amount","Adjustment","Adjustment Description","Notes","Terms & Conditions","E-Commerce Operator Name","E-Commerce Operator GSTIN","Branch Name","Email","MOBILE NO","Billing Address Line 1","Billing Address Line 2","Billing city","Billing State","Billing Country","Billing Pin code","Shipping Address Line 1","Shipping Address Line 2","Shipping City","Shipping State","Shipping Country","Shipping Pin code","Accounts Receivable","Ack No.:","IRN :","Invoice Status","Salesperson","Import Check"];
+
+const TERMS_TEXT = "The purchased material is strictly for self-consumption and not for resale. Payment Terms: Payments must be made within the due date; late payments will incur an 18% per annum interest. Taxes & Duties: GST and other applicable taxes are extra as per government norms. Order Confirmation: Once an order is confirmed, it cannot be canceled or modified. Claims & Returns: Any claims for defects or damages must be reported within 48 hours.";
+const NOTES_TEXT = "Thanks for your business.";
+const ECOM_OPERATOR_NAME = "Picknpack ecommerce";
+const ECOM_OPERATOR_GSTIN = "07AAMCP7214N1ZW";
+const BRANCH_NAME = "Delhi- Online";
+const SALESPERSON = "PICKNPACK";
+
+const STATE_MAP = {
+  "andhra pradesh":"AD","arunachal pradesh":"AR","assam":"AS","bihar":"BR","chhattisgarh":"CT",
+  "goa":"GA","gujarat":"GJ","haryana":"HR","himachal pradesh":"HP","jharkhand":"JH","karnataka":"KA",
+  "kerala":"KL","madhya pradesh":"MP","maharashtra":"MH","manipur":"MN","meghalaya":"ML","mizoram":"MZ",
+  "nagaland":"NL","odisha":"OD","punjab":"PB","rajasthan":"RJ","sikkim":"SK","tamil nadu":"TN",
+  "telangana":"TS","tripura":"TR","uttar pradesh":"UP","uttarakhand":"UK","west bengal":"WB",
+  "andaman and nicobar islands":"AN","chandigarh":"CH","dadra and nagar haveli and daman and diu":"DN",
+  "delhi":"DL","jammu and kashmir":"JK","ladakh":"LA","lakshadweep":"LD","puducherry":"PY","pondicherry":"PY"
+};
+
+function normHeader(h){ return String(h).toLowerCase().replace(/[^a-z0-9]/g,""); }
+function normState(s){ return String(s||"").toLowerCase().trim().replace(/&/g,"and").replace(/\s+/g," "); }
+
+function findKey(sampleKeys, candidates){
+  const map = {};
+  sampleKeys.forEach(k => map[normHeader(k)] = k);
+  for(const c of candidates){ if(map[c]) return map[c]; }
+  return null;
+}
+
+function toNumStr(v){
+  if(v === undefined || v === null || v === "") return "";
+  if(typeof v === "number") return String(v);
+  return String(v).trim();
+}
+
+const STATE_CANON = {
+  "andhra pradesh":"Andhra Pradesh","arunachal pradesh":"Arunachal Pradesh","assam":"Assam","bihar":"Bihar",
+  "chhattisgarh":"Chhattisgarh","goa":"Goa","gujarat":"Gujarat","haryana":"Haryana",
+  "himachal pradesh":"Himachal Pradesh","jharkhand":"Jharkhand","karnataka":"Karnataka","kerala":"Kerala",
+  "madhya pradesh":"Madhya Pradesh","maharashtra":"Maharashtra","manipur":"Manipur","meghalaya":"Meghalaya",
+  "mizoram":"Mizoram","nagaland":"Nagaland","odisha":"Odisha","punjab":"Punjab","rajasthan":"Rajasthan",
+  "sikkim":"Sikkim","tamil nadu":"Tamil Nadu","telangana":"Telangana","tripura":"Tripura",
+  "uttar pradesh":"Uttar Pradesh","uttarakhand":"Uttarakhand","west bengal":"West Bengal",
+  "andaman and nicobar islands":"Andaman and Nicobar Islands","chandigarh":"Chandigarh",
+  "dadra and nagar haveli and daman and diu":"Dadra and Nagar Haveli and Daman and Diu","delhi":"Delhi",
+  "jammu and kashmir":"Jammu and Kashmir","ladakh":"Ladakh","lakshadweep":"Lakshadweep",
+  "puducherry":"Puducherry","pondicherry":"Puducherry"
+};
+function canonState(s){
+  const key = normState(s);
+  return STATE_CANON[key] || cleanStr(s);
+}
+
+// Some exports give 2-letter state codes directly instead of full names (e.g. "UP", "MH")
+const STATE_CODE_TO_NAME = {
+  "ad":"Andhra Pradesh","ar":"Arunachal Pradesh","as":"Assam","br":"Bihar","ct":"Chhattisgarh",
+  "ga":"Goa","gj":"Gujarat","hr":"Haryana","hp":"Himachal Pradesh","jh":"Jharkhand","ka":"Karnataka",
+  "kl":"Kerala","mp":"Madhya Pradesh","mh":"Maharashtra","mn":"Manipur","ml":"Meghalaya","mz":"Mizoram",
+  "nl":"Nagaland","od":"Odisha","pb":"Punjab","rj":"Rajasthan","sk":"Sikkim","tn":"Tamil Nadu",
+  "ts":"Telangana","tr":"Tripura","up":"Uttar Pradesh","uk":"Uttarakhand","wb":"West Bengal",
+  "an":"Andaman and Nicobar Islands","ch":"Chandigarh","dn":"Dadra and Nagar Haveli and Daman and Diu",
+  "dl":"Delhi","jk":"Jammu and Kashmir","la":"Ladakh","ld":"Lakshadweep","py":"Puducherry"
+};
+// Resolves a state value (full name OR 2-letter code) to {code, name}. Returns null if unrecognized.
+function resolveState(raw){
+  const key = normState(raw);
+  if(STATE_MAP[key]) return { code: STATE_MAP[key], name: STATE_CANON[key] };
+  const short = cleanStr(raw).toLowerCase();
+  if(STATE_CODE_TO_NAME[short]) return { code: short.toUpperCase(), name: STATE_CODE_TO_NAME[short] };
+  return null;
+}
+
+function cleanStr(v){
+  if(v === undefined || v === null) return "";
+  if(typeof v === "number"){
+    return Number.isInteger(v) ? String(v) : String(v);
+  }
+  return String(v).trim();
+}
+function isBlankish(v){
+  const s = cleanStr(v).toLowerCase();
+  return s === "" || s === "-" || s === "na" || s === "n/a" || s === "nan" || s === "null";
+}
+
+let workbookFile = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileNameEl = document.getElementById('fileName');
+const dropText = document.getElementById('dropText');
+const convertBtn = document.getElementById('convertBtn');
+const statusEl = document.getElementById('status');
+const resultBox = document.getElementById('resultBox');
+const summaryEl = document.getElementById('summary');
+const lastInvoiceInput = document.getElementById('lastInvoice');
+const invoiceDateInput = document.getElementById('invoiceDate');
+
+invoiceDateInput.value = new Date().toISOString().slice(0,10);
+
+dropZone.addEventListener('click', () => fileInput.click());
+['dragover'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag'); }));
+dropZone.addEventListener('drop', e => {
+  if(e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+});
+fileInput.addEventListener('change', () => { if(fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file){
+  workbookFile = file;
+  fileNameEl.textContent = file.name;
+  dropText.textContent = "Click to change file:";
+  convertBtn.disabled = false;
+  convertBtn.textContent = "Convert & Download Zoho File";
+  resultBox.classList.add('hidden');
+  statusEl.textContent = "";
+}
+
+// Prefill last invoice number from previous run (personal storage, when available)
+(async function prefill(){
+  try{
+    if(!window.storage || typeof window.storage.get !== 'function') return;
+    const r = await window.storage.get('last_invoice_number');
+    if(r && r.value) lastInvoiceInput.value = r.value;
+  }catch(e){ /* no saved value yet, ignore */ }
+})();
+
+convertBtn.addEventListener('click', () => {
+  if(!workbookFile) return;
+  statusEl.textContent = "Reading file...";
+  resultBox.classList.add('hidden');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      processWorkbook(e.target.result);
+    }catch(err){
+      console.error(err);
+      showError("Something went wrong: " + err.message + ". Please check the file format or try again.");
+    }
+  };
+  reader.onerror = () => showError("Could not read the file. Please try again.");
+  reader.readAsArrayBuffer(workbookFile);
+});
+
+function showError(msg){
+  statusEl.textContent = "";
+  resultBox.classList.remove('hidden');
+  summaryEl.innerHTML = '<div class="err">' + msg + '</div>';
+}
+
+function processWorkbook(arrayBuffer){
+  const lastInvRaw = lastInvoiceInput.value.trim();
+  const invDate = invoiceDateInput.value;
+  if(!lastInvRaw){ showError("Please enter the last invoice number first (e.g. ECOM/26-27/17218)."); return; }
+  if(!invDate){ showError("Please choose an invoice date."); return; }
+
+  const m = lastInvRaw.match(/^(.*?)(\d+)\s*$/);
+  if(!m){ showError("Couldn't find a number at the end of the invoice number. Please use a format like ECOM/26-27/17218."); return; }
+  const prefix = m[1];
+  const digits = m[2];
+  const padLen = digits.length;
+  let counter = parseInt(digits, 10) + 1;
+
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  let sheetName = wb.SheetNames.find(n => /orders?/i.test(n)) || wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, {defval:""});
+
+  if(!rows.length){ showError("No data found in this file."); return; }
+
+  const sampleKeys = Object.keys(rows[0]);
+  const K = {
+    voucher: findKey(sampleKeys, ["vouchernumber"]),
+    date: findKey(sampleKeys, ["date"]),
+    orderId: findKey(sampleKeys, ["orderid"]),
+    custName: findKey(sampleKeys, ["customername"]),
+    custPhone: findKey(sampleKeys, ["customerphone"]),
+    skuCode: findKey(sampleKeys, ["itemskuscode","itemskucode"]),
+    skuName: findKey(sampleKeys, ["itemskuname"]),
+    qty: findKey(sampleKeys, ["itemquantity"]),
+    email: findKey(sampleKeys, ["customeremail"]),
+    shipAddr1: findKey(sampleKeys, ["shippingaddressline1"]),
+    shipAddr2: findKey(sampleKeys, ["shippingaddressline2"]),
+    shipCity: findKey(sampleKeys, ["shippingcity"]),
+    shipState: findKey(sampleKeys, ["shippingstate"]),
+    shipPin: findKey(sampleKeys, ["shippingpincode"]),
+    sellerState: findKey(sampleKeys, ["sellerstate"]),
+    itemGst: findKey(sampleKeys, ["tax"]),
+    gstin: findKey(sampleKeys, ["gstin"]),
+    perUnit: findKey(sampleKeys, ["productperunit"]),
+    hsn: findKey(sampleKeys, ["itemhsn"])
+  };
+
+  const OPTIONAL_FIELDS = new Set(["voucher","date"]); // not every export includes these; not required
+  const missing = Object.entries(K).filter(([k,v]) => v === null && !OPTIONAL_FIELDS.has(k)).map(([k]) => k);
+  if(missing.length){
+    showError("These columns were not found in the file: " + missing.join(", ") + ". Please upload the original Myntra/Meesho export file.");
+    return;
+  }
+
+  const invoiceNoOf = {};
+  const outRows = [];
+  const warnings = [];
+  let firstInvoice = null, lastInvoiceAssigned = null;
+
+  rows.forEach((row, idx) => {
+    const orderId = cleanStr(row[K.orderId]) || cleanStr(row[K.voucher]) || ("ROW" + idx);
+    if(!invoiceNoOf[orderId]){
+      const invNo = prefix + String(counter).padStart(padLen, "0");
+      invoiceNoOf[orderId] = invNo;
+      if(!firstInvoice) firstInvoice = invNo;
+      lastInvoiceAssigned = invNo;
+      counter++;
+    }
+    const invoiceNumber = invoiceNoOf[orderId];
+
+    const gstinRaw = cleanStr(row[K.gstin]);
+    const gstin = isBlankish(gstinRaw) ? "" : gstinRaw;
+    const gstTreatment = gstin ? "business_gst" : "business_none";
+
+    const shipStateRaw = cleanStr(row[K.shipState]);
+    const sellerStateRaw = cleanStr(row[K.sellerState]);
+    const stateInfo = resolveState(shipStateRaw);
+    const placeCode = stateInfo ? stateInfo.code : "";
+    const billingStateOut = stateInfo ? stateInfo.name : shipStateRaw;
+    let rowNote = "";
+    if(!stateInfo){
+      warnings.push("Order " + orderId + ": state '" + shipStateRaw + "' was not recognized — Place of Supply left blank.");
+      rowNote = "CHECK: Place of Supply — state '" + shipStateRaw + "' not recognized. Fill manually before importing.";
+    }
+
+    const sameState = normState(shipStateRaw) === normState(sellerStateRaw) && shipStateRaw !== "";
+    const gstPctMatch = String(row[K.itemGst]).match(/[\d.]+/);
+    const gstPct = gstPctMatch ? gstPctMatch[0] : "18";
+    const itemTax = (sameState ? "GST" : "IGST") + gstPct;
+    const itemTaxType = sameState ? "Tax Group" : "ItemAmount";
+
+    const custName = cleanStr(row[K.custName]);
+    const custPhone = cleanStr(row[K.custPhone]);
+    const combinedName = custPhone ? (custName + "-" + custPhone) : custName;
+
+    const addr1 = cleanStr(row[K.shipAddr1]);
+    const addr2Raw = cleanStr(row[K.shipAddr2]);
+    const addr2 = isBlankish(addr2Raw) ? "" : addr2Raw;
+    const city = cleanStr(row[K.shipCity]);
+    const pin = cleanStr(row[K.shipPin]);
+
+    const out = {};
+    out["Invoice Number"] = invoiceNumber;
+    out["Invoice Date"] = invDate;
+    out["Customer Name"] = combinedName;
+    out["GST Treatment"] = gstTreatment;
+    out["GST Identification Number (GSTIN)"] = gstin;
+    out["Place of Supply"] = placeCode;
+    out["Sales order id"] = cleanStr(row[K.orderId]);
+    out["Payment Terms"] = 0;
+    out["Payment Terms Label"] = "Paid";
+    out["Due Date"] = invDate;
+    out["Currency Code"] = "INR";
+    out["Exchange Rate"] = 1;
+    out["Account"] = "Sales";
+    out["SKU"] = cleanStr(row[K.skuCode]);
+    out["Item Name"] = cleanStr(row[K.skuName]);
+    out["Item Desc"] = "";
+    out["Item Type"] = "goods";
+    out["HSN/SAC"] = toNumStr(row[K.hsn]);
+    out["Quantity"] = toNumStr(row[K.qty]);
+    out["Usage unit"] = "pcs";
+    out["Item Price"] = toNumStr(row[K.perUnit]);
+    out["Is Inclusive Tax"] = false;
+    out["Item Tax"] = itemTax;
+    out["Item Tax Type"] = itemTaxType;
+    out["Item Tax %"] = Number(gstPct);
+    out["Is Discount Before Tax"] = true;
+    out["Entity Discount Percent"] = 0;
+    out["Entity Discount Amount"] = 0;
+    out["Discount"] = 0;
+    out["Discount Amount"] = 0;
+    out["Adjustment"] = 0;
+    out["Adjustment Description"] = "Adjustment";
+    out["Notes"] = NOTES_TEXT;
+    out["Terms & Conditions"] = TERMS_TEXT;
+    out["E-Commerce Operator Name"] = ECOM_OPERATOR_NAME;
+    out["E-Commerce Operator GSTIN"] = ECOM_OPERATOR_GSTIN;
+    out["Branch Name"] = BRANCH_NAME;
+    out["Email"] = cleanStr(row[K.email]);
+    out["MOBILE NO"] = custPhone;
+    out["Billing Address Line 1"] = addr1;
+    out["Billing Address Line 2"] = addr2;
+    out["Billing city"] = city;
+    out["Billing State"] = billingStateOut;
+    out["Billing Country"] = "India";
+    out["Billing Pin code"] = pin;
+    out["Shipping Address Line 1"] = addr1;
+    out["Shipping Address Line 2"] = addr2;
+    out["Shipping City"] = city;
+    out["Shipping State"] = billingStateOut;
+    out["Shipping Country"] = "India";
+    out["Shipping Pin code"] = pin;
+    out["Accounts Receivable"] = "Accounts Receivable";
+    out["Ack No.:"] = "";
+    out["IRN :"] = "";
+    out["Invoice Status"] = "Sent";
+    out["Salesperson"] = SALESPERSON;
+    out["Import Check"] = rowNote;
+
+    outRows.push(out);
+  });
+
+  const newSheet = XLSX.utils.json_to_sheet(outRows, {header: HEADERS});
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, newSheet, "zoho formate");
+
+  const outName = "zoho_import_" + invDate + ".xlsx";
+  XLSX.writeFile(newWb, outName);
+
+  const orderCount = Object.keys(invoiceNoOf).length;
+
+  statusEl.textContent = "";
+  resultBox.classList.remove('hidden');
+  let html = '<h3>Conversion complete ✓</h3>';
+  html += '<div class="kv"><span>Total orders (invoices)</span><b>' + orderCount + '</b></div>';
+  html += '<div class="kv"><span>Total line items</span><b>' + outRows.length + '</b></div>';
+  html += '<div class="kv"><span>Invoice number range</span><b>' + firstInvoice + ' – ' + lastInvoiceAssigned + '</b></div>';
+  html += '<div class="kv"><span>Invoice date applied</span><b>' + invDate + '</b></div>';
+  summaryEl.innerHTML = html;
+
+  if(warnings.length){
+    const uniqueWarnings = [...new Set(warnings)].slice(0, 15);
+    let w = '<div class="warn"><b>' + warnings.length + ' row(s) had an unrecognized state — please check Place of Supply manually:</b><ul>';
+    uniqueWarnings.forEach(x => w += '<li>' + x + '</li>');
+    w += '</ul></div>';
+    summaryEl.innerHTML += w;
+  }
+
+  // remember the last invoice number for next time, if storage is available
+  if(window.storage && typeof window.storage.set === 'function'){
+    window.storage.set('last_invoice_number', lastInvoiceAssigned, false).catch(()=>{});
+  }
+  lastInvoiceInput.value = lastInvoiceAssigned;
+}
+
+// ============ Tab switching ============
+const tabBtnInvoice = document.getElementById('tabBtnInvoice');
+const tabBtnPayment = document.getElementById('tabBtnPayment');
+const panelInvoice = document.getElementById('panelInvoice');
+const panelPayment = document.getElementById('panelPayment');
+tabBtnInvoice.addEventListener('click', () => {
+  tabBtnInvoice.classList.add('active');
+  tabBtnPayment.classList.remove('active');
+  panelInvoice.classList.remove('hidden');
+  panelPayment.classList.add('hidden');
+});
+tabBtnPayment.addEventListener('click', () => {
+  tabBtnPayment.classList.add('active');
+  tabBtnInvoice.classList.remove('active');
+  panelPayment.classList.remove('hidden');
+  panelInvoice.classList.add('hidden');
+});
+
+// ============ Payment Receipt module ============
+const HEADERS2 = ["Payment Number Prefix","Payment Number Suffix","Customer Name","Place of Supply","GST Treatment","GST Identification Number (GSTIN)","Payment Type","Description of Supply","Tax Name","Tax Percentage","Tax Type","Date","Mode","Exchange Rate","Amount","Description","Bank Charges","Tax Account","Deposit To","Reference Number","Invoice Number","Amount Applied to Invoice","Invoice Amount","Withholding Tax Amount","Branch Name"];
+
+const DEFAULT_PREFIX = "CF-SETL-";
+const PAYMENT_TYPE = "Invoice Payment";
+const MODE = "Cashfree";
+const DEPOSIT_TO = "Cashfree - Payment Gateway";
+
+function toDDMMYYYY(isoDate){
+  const parts = isoDate.split("-");
+  return parts[2] + "/" + parts[1] + "/" + parts[0];
+}
+
+let workbookFile2 = null;
+const dropZone2 = document.getElementById('dropZone2');
+const fileInput2 = document.getElementById('fileInput2');
+const fileNameEl2 = document.getElementById('fileName2');
+const dropText2 = document.getElementById('dropText2');
+const convertBtn2 = document.getElementById('convertBtn2');
+const statusEl2 = document.getElementById('status2');
+const resultBox2 = document.getElementById('resultBox2');
+const summaryEl2 = document.getElementById('summary2');
+const prefixInput = document.getElementById('prefixInput');
+const suffixInput = document.getElementById('suffixInput');
+const paymentDateInput = document.getElementById('paymentDate');
+
+paymentDateInput.value = new Date().toISOString().slice(0,10);
+prefixInput.value = DEFAULT_PREFIX;
+
+dropZone2.addEventListener('click', () => fileInput2.click());
+['dragover'].forEach(evt => dropZone2.addEventListener(evt, e => { e.preventDefault(); dropZone2.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => dropZone2.addEventListener(evt, e => { e.preventDefault(); dropZone2.classList.remove('drag'); }));
+dropZone2.addEventListener('drop', e => {
+  if(e.dataTransfer.files.length){ fileInput2.files = e.dataTransfer.files; handleFile2(e.dataTransfer.files[0]); }
+});
+fileInput2.addEventListener('change', () => { if(fileInput2.files.length) handleFile2(fileInput2.files[0]); });
+
+function handleFile2(file){
+  workbookFile2 = file;
+  fileNameEl2.textContent = file.name;
+  dropText2.textContent = "Click to change file:";
+  convertBtn2.disabled = false;
+  convertBtn2.textContent = "Convert & Download Payment File";
+  resultBox2.classList.add('hidden');
+  statusEl2.textContent = "";
+}
+
+// Prefill starting payment number from previous run (personal storage, when available)
+(async function prefillSuffix(){
+  try{
+    if(!window.storage || typeof window.storage.get !== 'function') return;
+    const r = await window.storage.get('last_payment_suffix');
+    if(r && r.value) suffixInput.value = r.value;
+  }catch(e){ /* no saved value yet, ignore */ }
+})();
+
+convertBtn2.addEventListener('click', () => {
+  if(!workbookFile2) return;
+  statusEl2.textContent = "Reading file...";
+  resultBox2.classList.add('hidden');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      processPaymentWorkbook(e.target.result);
+    }catch(err){
+      console.error(err);
+      showError2("Something went wrong: " + err.message + ". Please check the file format or try again.");
+    }
+  };
+  reader.onerror = () => showError2("Could not read the file. Please try again.");
+  reader.readAsArrayBuffer(workbookFile2);
+});
+
+function showError2(msg){
+  statusEl2.textContent = "";
+  resultBox2.classList.remove('hidden');
+  summaryEl2.innerHTML = '<div class="err">' + msg + '</div>';
+}
+
+function processPaymentWorkbook(arrayBuffer){
+  const prefix = (prefixInput.value || DEFAULT_PREFIX).trim();
+  const suffixRaw = suffixInput.value.trim();
+  const dateVal = paymentDateInput.value;
+
+  if(!suffixRaw || isNaN(parseInt(suffixRaw, 10))){ showError2("Please enter a starting payment number (e.g. 11634)."); return; }
+  if(!dateVal){ showError2("Please choose a payment date."); return; }
+
+  let counter = parseInt(suffixRaw, 10);
+  const dateStr = toDDMMYYYY(dateVal);
+
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  let sheetName = wb.SheetNames.find(n => /invoice|settlement/i.test(n)) || wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:""});
+  if(!rows.length){ showError2("No data found in this file."); return; }
+
+  const sampleKeys = Object.keys(rows[0]);
+  const K2 = {
+    invoiceNumber: findKey(sampleKeys, ["invoicenumber"]),
+    customerName: findKey(sampleKeys, ["customername"]),
+    amount: findKey(sampleKeys, ["amount"]),
+    cashfreeId: findKey(sampleKeys, ["cashfreeid"])
+  };
+  const missing2 = Object.entries(K2).filter(([k,v]) => v === null).map(([k]) => k);
+  if(missing2.length){
+    showError2("These columns were not found in the file: " + missing2.join(", ") + ". Please upload the original settlement export file.");
+    return;
+  }
+
+  const outRows = [];
+  const firstSuffix = counter;
+  let lastSuffix = counter;
+
+  rows.forEach(row => {
+    const amountRaw = row[K2.amount];
+    const amountNum = (typeof amountRaw === "number") ? amountRaw : (Number(amountRaw) || 0);
+
+    const out = {};
+    out["Payment Number Prefix"] = prefix;
+    out["Payment Number Suffix"] = counter;
+    out["Customer Name"] = cleanStr(row[K2.customerName]);
+    out["Place of Supply"] = "";
+    out["GST Treatment"] = "";
+    out["GST Identification Number (GSTIN)"] = "";
+    out["Payment Type"] = PAYMENT_TYPE;
+    out["Description of Supply"] = "";
+    out["Tax Name"] = "";
+    out["Tax Percentage"] = "";
+    out["Tax Type"] = "";
+    out["Date"] = dateStr;
+    out["Mode"] = MODE;
+    out["Exchange Rate"] = 1;
+    out["Amount"] = amountNum;
+    out["Description"] = "Cashfree prepaid collection. Invoice dated " + dateStr;
+    out["Bank Charges"] = "";
+    out["Tax Account"] = "";
+    out["Deposit To"] = DEPOSIT_TO;
+    out["Reference Number"] = cleanStr(row[K2.cashfreeId]);
+    out["Invoice Number"] = cleanStr(row[K2.invoiceNumber]);
+    out["Amount Applied to Invoice"] = amountNum;
+    out["Invoice Amount"] = amountNum;
+    out["Withholding Tax Amount"] = "";
+    out["Branch Name"] = BRANCH_NAME;
+
+    outRows.push(out);
+    lastSuffix = counter;
+    counter++;
+  });
+
+  const newSheet = XLSX.utils.json_to_sheet(outRows, {header: HEADERS2});
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, newSheet, "Sheet1");
+  const outName = "cashfree_payment_import_" + dateVal + ".xlsx";
+  XLSX.writeFile(newWb, outName);
+
+  statusEl2.textContent = "";
+  resultBox2.classList.remove('hidden');
+  let html2 = '<h3>Conversion complete ✓</h3>';
+  html2 += '<div class="kv"><span>Total payments</span><b>' + outRows.length + '</b></div>';
+  html2 += '<div class="kv"><span>Payment number range</span><b>' + prefix + firstSuffix + ' – ' + prefix + lastSuffix + '</b></div>';
+  html2 += '<div class="kv"><span>Payment date applied</span><b>' + dateStr + '</b></div>';
+  summaryEl2.innerHTML = html2;
+
+  // remember where to continue next time, if storage is available
+  if(window.storage && typeof window.storage.set === 'function'){
+    window.storage.set('last_payment_suffix', String(lastSuffix + 1), false).catch(()=>{});
+  }
+  suffixInput.value = String(lastSuffix + 1);
+}
+</script>
+</body>
+</html>
