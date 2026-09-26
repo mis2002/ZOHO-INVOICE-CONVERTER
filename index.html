@@ -163,6 +163,7 @@
     <button class="tabbtn active" data-panel="panelInvoice" type="button">Invoice Converter</button>
     <button class="tabbtn" data-panel="panelFlipkart" type="button">Flipkart / Shopsy Invoice</button>
     <button class="tabbtn" data-panel="panelPayment" type="button">Payment Receipt</button>
+    <button class="tabbtn" data-panel="panelFkPayment" type="button">Flipkart Payment</button>
   </div>
 
   <!-- ================= Myntra / Meesho invoice ================= -->
@@ -285,6 +286,49 @@
 
     <div class="result hidden" id="resultBox2">
       <div class="summary" id="summary2"></div>
+    </div>
+  </div>
+
+  <!-- ================= Flipkart payment receipt ================= -->
+  <div class="panel hidden" id="panelFkPayment">
+    <div class="step">
+      <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the Flipkart settlement sheet</div></div>
+      <div class="step-body">
+        <div class="drop" id="dropZone4">
+          <input type="file" id="fileInput4" accept=".xlsx,.xls">
+          <div class="placeholder" id="dropText4">Click to choose your Flipkart Payment Settlement .xlsx file</div>
+          <div class="fname" id="fileName4"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="step">
+        <div class="step-head"><div class="step-num">2</div><div class="step-title">Payment number</div></div>
+        <div class="step-body">
+          <label class="field-label" for="prefixInput4">Prefix</label>
+          <input type="text" id="prefixInput4" placeholder="FK-SETL-">
+          <label class="field-label" style="margin-top:12px;" for="suffixInput4">Starting number</label>
+          <input type="text" id="suffixInput4" placeholder="420">
+          <p class="hint">Used for the first payment in this file; every next one gets +1. Remembered separately from Cashfree.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><div class="step-num">3</div><div class="step-title">Payment date</div></div>
+        <div class="step-body">
+          <label class="field-label" for="paymentDate4">Optional override</label>
+          <input type="date" id="paymentDate4">
+          <p class="hint">Leave empty to use each row's own Date from the Flipkart sheet (recommended).</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="convert" id="convertBtn4" disabled>Upload a file to get started</button>
+    <div class="status" id="status4"></div>
+
+    <div class="result hidden" id="resultBox4">
+      <div class="summary" id="summary4"></div>
     </div>
   </div>
 
@@ -1183,6 +1227,195 @@ async function processPaymentWorkbook(arrayBuffer){
 
   saveVal('last_payment_suffix', String(lastSuffix + 1));
   suffixInput.value = String(lastSuffix + 1);
+}
+// ============ Flipkart Payment Receipt module ============
+const FK_DEFAULT_PREFIX = "FK-SETL-";
+const FK_MODE = "FLIPKART INTERNET PRIVATE LIMITED";
+const FK_DEPOSIT_TO = "Flipkart - Payment Gateway";
+
+// Settlement sheet dates: Excel date cells, or text in dd/mm/yyyy (Indian format)
+function fkPayDateToISO(v){
+  if(typeof v === "number" || v instanceof Date) return fkDateToISO(v);
+  const s = cleanStr(v);
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1] + "-" + m[2].padStart(2,"0") + "-" + m[3].padStart(2,"0");
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){
+    let y = m[3]; if(y.length === 2) y = "20" + y;
+    return y + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0");
+  }
+  return "";
+}
+
+let workbookFile4 = null;
+const dropZone4 = document.getElementById('dropZone4');
+const fileInput4 = document.getElementById('fileInput4');
+const fileNameEl4 = document.getElementById('fileName4');
+const dropText4 = document.getElementById('dropText4');
+const convertBtn4 = document.getElementById('convertBtn4');
+const statusEl4 = document.getElementById('status4');
+const resultBox4 = document.getElementById('resultBox4');
+const summaryEl4 = document.getElementById('summary4');
+const prefixInput4 = document.getElementById('prefixInput4');
+const suffixInput4 = document.getElementById('suffixInput4');
+const paymentDateInput4 = document.getElementById('paymentDate4');
+
+prefixInput4.value = FK_DEFAULT_PREFIX;
+bindDrop(dropZone4, fileInput4, handleFile4);
+
+function handleFile4(file){
+  workbookFile4 = file;
+  fileNameEl4.textContent = file.name;
+  dropText4.textContent = "Click to change file:";
+  convertBtn4.disabled = false;
+  convertBtn4.textContent = "Convert & Download Payment File";
+  resultBox4.classList.add('hidden');
+  statusEl4.textContent = "";
+}
+
+loadVal('last_payment_suffix_flipkart').then(v => { if(v && !suffixInput4.value) suffixInput4.value = v; });
+
+convertBtn4.addEventListener('click', () => {
+  if(!workbookFile4) return;
+  statusEl4.textContent = "Reading file...";
+  resultBox4.classList.add('hidden');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    Promise.resolve().then(() => processFkPaymentWorkbook(e.target.result)).catch(err => {
+      console.error(err);
+      showError4("Something went wrong: " + err.message + ". Please check the file format or try again.");
+    });
+  };
+  reader.onerror = () => showError4("Could not read the file. Please try again.");
+  reader.readAsArrayBuffer(workbookFile4);
+});
+
+function showError4(msg){
+  statusEl4.textContent = "";
+  resultBox4.classList.remove('hidden');
+  summaryEl4.innerHTML = '<div class="err">' + msg + '</div>';
+}
+
+async function processFkPaymentWorkbook(arrayBuffer){
+  const prefix = (prefixInput4.value || FK_DEFAULT_PREFIX).trim();
+  const suffixRaw = suffixInput4.value.trim();
+  const overrideDate = paymentDateInput4.value; // may be empty
+
+  if(!suffixRaw || isNaN(parseInt(suffixRaw, 10))){ showError4("Please enter a starting payment number (e.g. 420)."); return; }
+  let counter = parseInt(suffixRaw, 10);
+
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const sheetName = wb.SheetNames.find(n => /invoice|settlement/i.test(n)) || wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:""});
+  if(!rows.length){ showError4("No data found in this file."); return; }
+
+  const keySet = new Set();
+  rows.slice(0, 50).forEach(r => Object.keys(r).forEach(k => keySet.add(k)));
+  const sampleKeys = [...keySet];
+  const K = {
+    date: findKey(sampleKeys, ["date","invoicedate"]),
+    invoiceNumber: findKey(sampleKeys, ["invoicenumber","invoiceno"]),
+    customerName: findKey(sampleKeys, ["customername"]),
+    orderNumber: findKey(sampleKeys, ["ordernumber","orderid","orderno"]),
+    amount: findKey(sampleKeys, ["amount"]),
+    cashfreeId: findKey(sampleKeys, ["cashfreeid","referencenumber"])
+  };
+  const OPTIONAL = new Set(["date","cashfreeId"]);
+  const missing = Object.entries(K).filter(([k,v]) => v === null && !OPTIONAL.has(k)).map(([k]) => k);
+  if(missing.length){
+    showError4("These columns were not found in the file: " + missing.join(", ") + ". Please upload the Flipkart payment settlement sheet.");
+    return;
+  }
+
+  const outRows = [];
+  const warnings = [];
+  const datesUsed = new Set();
+  const firstSuffix = counter;
+  let lastSuffix = counter;
+  let total = 0;
+
+  rows.forEach(row => {
+    const invNo = cleanStr(row[K.invoiceNumber]);
+    if(!invNo) return; // skip blank rows
+
+    let iso = overrideDate || (K.date ? fkPayDateToISO(row[K.date]) : "");
+    if(!iso){
+      iso = todayISO();
+      warnings.push("Invoice " + invNo + ": no Date in the file — today's date used.");
+    }
+    const dateStr = toDDMMYYYY(iso);
+    datesUsed.add(dateStr);
+
+    const amountNum = numOrNull(row[K.amount]);
+    if(amountNum === null || amountNum === 0) warnings.push("Invoice " + invNo + ": amount is empty or 0.");
+    const amt = amountNum || 0;
+    total += amt;
+
+    // Reference = Flipkart Order Number (the sheet's Cashfree ID column just copies it)
+    let ref = cleanStr(row[K.orderNumber]);
+    if(!ref && K.cashfreeId) ref = cleanStr(row[K.cashfreeId]);
+
+    const out = {};
+    out["Payment Number Prefix"] = prefix;
+    out["Payment Number Suffix"] = counter;
+    out["Customer Name"] = cleanStr(row[K.customerName]);
+    out["Place of Supply"] = "";
+    out["GST Treatment"] = "";
+    out["GST Identification Number (GSTIN)"] = "";
+    out["Payment Type"] = PAYMENT_TYPE;
+    out["Description of Supply"] = "";
+    out["Tax Name"] = "";
+    out["Tax Percentage"] = "";
+    out["Tax Type"] = "";
+    out["Date"] = dateStr;
+    out["Mode"] = FK_MODE;
+    out["Exchange Rate"] = 1;
+    out["Amount"] = amt;
+    out["Description"] = "Flipkart prepaid collection. Invoice dated " + dateStr;
+    out["Bank Charges"] = "";
+    out["Tax Account"] = "";
+    out["Deposit To"] = FK_DEPOSIT_TO;
+    out["Reference Number"] = ref;
+    out["Invoice Number"] = invNo;
+    out["Amount Applied to Invoice"] = amt;
+    out["Invoice Amount"] = amt;
+    out["Withholding Tax Amount"] = "";
+    out["Branch Name"] = BRANCH_NAME;
+
+    outRows.push(out);
+    lastSuffix = counter;
+    counter++;
+  });
+
+  if(!outRows.length){ showError4("No rows with an Invoice Number were found in this file."); return; }
+
+  const newSheet = XLSX.utils.json_to_sheet(outRows, {header: HEADERS2});
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, newSheet, "Sheet1");
+  const outName = "Zoho_Flipkart_Payment_" + (overrideDate || todayISO()) + ".xlsx";
+  statusEl4.textContent = "Preparing download...";
+  const saveResult = await saveWorkbook(newWb, outName);
+
+  statusEl4.textContent = "";
+  resultBox4.classList.remove('hidden');
+  let html = '<h3>Conversion complete ✓</h3>';
+  html += '<div class="kv"><span>Total payments</span><b>' + outRows.length + '</b></div>';
+  html += '<div class="kv"><span>Total amount</span><b>₹' + round2(total).toLocaleString('en-IN') + '</b></div>';
+  html += '<div class="kv"><span>Payment number range</span><b>' + escHtml(prefix + firstSuffix) + ' – ' + escHtml(prefix + lastSuffix) + '</b></div>';
+  html += '<div class="kv"><span>Payment date(s)</span><b>' + [...datesUsed].join(', ') + '</b></div>';
+  html += saveNote(saveResult);
+  summaryEl4.innerHTML = html;
+
+  if(warnings.length){
+    const u = [...new Set(warnings)];
+    let w = '<div class="warn"><b>' + u.length + ' thing(s) to check before importing:</b><ul>';
+    u.slice(0, 20).forEach(x => w += '<li>' + escHtml(x) + '</li>');
+    w += '</ul></div>';
+    summaryEl4.innerHTML += w;
+  }
+
+  saveVal('last_payment_suffix_flipkart', String(lastSuffix + 1));
+  suffixInput4.value = String(lastSuffix + 1);
 }
 </script>
 </body>
