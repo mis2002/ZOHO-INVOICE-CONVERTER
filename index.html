@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Myntra &amp; Meesho → Zoho Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zoho Import Toolkit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,9 +19,31 @@
     --accent-soft:#eaf3f0;
     --danger:#c2503e;
     --danger-soft:#fbece8;
+    --danger-ink:#8a3628;
+    --drop-bg:#fbfbfc;
+    --input-bg:#ffffff;
+    --disabled:#c7ccd6;
     --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171c; --panel:#1c2027; --border:#2c323c; --ink:#e7e9ee; --ink-soft:#9aa1b0;
+      --accent:#4fa28f; --accent-deep:#6cbba8; --accent-soft:#1f3530;
+      --danger:#e07a66; --danger-soft:#3a2420; --danger-ink:#f0b3a6;
+      --drop-bg:#181c22; --input-bg:#14171c; --disabled:#3a404b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171c; --panel:#1c2027; --border:#2c323c; --ink:#e7e9ee; --ink-soft:#9aa1b0;
+    --accent:#4fa28f; --accent-deep:#6cbba8; --accent-soft:#1f3530;
+    --danger:#e07a66; --danger-soft:#3a2420; --danger-ink:#f0b3a6;
+    --drop-bg:#181c22; --input-bg:#14171c; --disabled:#3a404b;
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); }
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -35,12 +57,8 @@
   .wrap{ max-width: 720px; margin: 0 auto; }
 
   .masthead{ margin-bottom: 26px; }
-  .masthead .tag{
-    font-size:12px; font-weight:600; letter-spacing:.04em; color: var(--accent);
-  }
-  .masthead h1{
-    font-size: 26px; font-weight:700; margin:6px 0 6px; letter-spacing:-0.01em;
-  }
+  .masthead .tag{ font-size:12px; font-weight:600; letter-spacing:.04em; color: var(--accent); }
+  .masthead h1{ font-size: 26px; font-weight:700; margin:6px 0 6px; letter-spacing:-0.01em; }
   .masthead .sub{ font-size:14px; color: var(--ink-soft); }
 
   .step{
@@ -69,7 +87,7 @@
     text-align:center;
     cursor:pointer;
     transition: border-color .15s, background .15s;
-    background: #fbfbfc;
+    background: var(--drop-bg);
   }
   .drop:hover, .drop.drag{ border-color: var(--accent); background: var(--accent-soft); }
   .drop input{ display:none; }
@@ -79,7 +97,7 @@
   label.field-label{ display:block; font-size:13px; font-weight:500; margin-bottom:7px; color: var(--ink-soft); }
   input[type=text], input[type=date]{
     width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:8px;
-    font-size:14.5px; font-family: var(--mono); background:#fff; color:var(--ink);
+    font-size:14.5px; font-family: var(--mono); background: var(--input-bg); color:var(--ink);
   }
   input[type=text]:focus, input[type=date]:focus{ outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -94,7 +112,7 @@
     cursor:pointer; margin-top:4px;
     transition: background .15s;
   }
-  button.convert:disabled{ background:#c7ccd6; cursor:not-allowed; }
+  button.convert:disabled{ background: var(--disabled); cursor:not-allowed; }
   button.convert:hover:not(:disabled){ background: var(--accent-deep); }
 
   .result{ margin-top:16px; }
@@ -104,29 +122,27 @@
     padding: 20px 22px;
     box-shadow: 0 1px 2px rgba(20,20,30,0.03);
   }
-  .summary h3{
-    margin:0 0 14px; font-size:15px; font-weight:600; color: var(--accent-deep);
-  }
-  .kv{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:14px;}
+  .summary h3{ margin:0 0 14px; font-size:15px; font-weight:600; color: var(--accent-deep); }
+  .kv{ display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--border); font-size:14px;}
   .kv:last-child{ border-bottom:none; }
   .kv span{ color: var(--ink-soft); }
-  .kv b{ font-family: var(--mono); font-weight:600; }
+  .kv b{ font-family: var(--mono); font-weight:600; text-align:right; word-break:break-all; }
   .warn{
     margin-top:14px; padding:13px 15px; background: var(--danger-soft); border-left:3px solid var(--danger);
-    border-radius:8px; font-size:13px; color:#8a3628;
+    border-radius:8px; font-size:13px; color: var(--danger-ink);
   }
   .warn ul{ margin:6px 0 0; padding-left:18px; }
   .err{
     margin-top:12px; padding:13px 15px; background: var(--danger-soft); border-left:3px solid var(--danger);
-    border-radius:8px; font-size:14px; color:#8a3628;
+    border-radius:8px; font-size:14px; color: var(--danger-ink);
   }
   .status{ font-size:13px; color: var(--ink-soft); margin-top:8px; }
   .footnote{ margin-top: 26px; font-size:12px; color: var(--ink-soft); text-align:center; }
 
-  .tabbar{ display:flex; gap:8px; margin-bottom:20px; }
+  .tabbar{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
   .tabbtn{
-    flex:1; padding:11px; border-radius:10px; border:1px solid var(--border);
-    background:#fff; font-weight:600; font-size:13.5px; color: var(--ink-soft);
+    flex:1; min-width:140px; padding:11px; border-radius:10px; border:1px solid var(--border);
+    background: var(--panel); font-weight:600; font-size:13.5px; color: var(--ink-soft);
     cursor:pointer; font-family: var(--sans); transition: background .15s, color .15s, border-color .15s;
   }
   .tabbtn.active{ background: var(--accent); color:#fff; border-color: var(--accent); }
@@ -144,50 +160,93 @@
   </div>
 
   <div class="tabbar">
-    <button class="tabbtn active" id="tabBtnInvoice" type="button">Invoice Converter</button>
-    <button class="tabbtn" id="tabBtnPayment" type="button">Payment Receipt</button>
+    <button class="tabbtn active" data-panel="panelInvoice" type="button">Invoice Converter</button>
+    <button class="tabbtn" data-panel="panelFlipkart" type="button">Flipkart / Shopsy Invoice</button>
+    <button class="tabbtn" data-panel="panelPayment" type="button">Payment Receipt</button>
   </div>
 
+  <!-- ================= Myntra / Meesho invoice ================= -->
   <div class="panel" id="panelInvoice">
-
-  <div class="step">
-    <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the report</div></div>
-    <div class="step-body">
-      <div class="drop" id="dropZone">
-        <input type="file" id="fileInput" accept=".xlsx,.xls">
-        <div class="placeholder" id="dropText">Click to choose your downloaded Myntra/Meesho .xlsx file</div>
-        <div class="fname" id="fileName"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row2">
     <div class="step">
-      <div class="step-head"><div class="step-num">2</div><div class="step-title">Last invoice number</div></div>
+      <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the report</div></div>
       <div class="step-body">
-        <label class="field-label" for="lastInvoice">The last number already used</label>
-        <input type="text" id="lastInvoice" placeholder="ECOM/26-27/17218">
-        <p class="hint">Every new order will get the next number after this one. Once entered, it's remembered for next time.</p>
+        <div class="drop" id="dropZone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls">
+          <div class="placeholder" id="dropText">Click to choose your downloaded Myntra/Meesho .xlsx file</div>
+          <div class="fname" id="fileName"></div>
+        </div>
       </div>
     </div>
 
+    <div class="row2">
+      <div class="step">
+        <div class="step-head"><div class="step-num">2</div><div class="step-title">Last invoice number</div></div>
+        <div class="step-body">
+          <label class="field-label" for="lastInvoice">The last number already used</label>
+          <input type="text" id="lastInvoice" placeholder="ECOM/26-27/17218">
+          <p class="hint">Every new order will get the next number after this one. Once entered, it's remembered for next time.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><div class="step-num">3</div><div class="step-title">Invoice date</div></div>
+        <div class="step-body">
+          <label class="field-label" for="invoiceDate">Applied to every row</label>
+          <input type="date" id="invoiceDate">
+        </div>
+      </div>
+    </div>
+
+    <button class="convert" id="convertBtn" disabled>Upload a file to get started</button>
+    <div class="status" id="status"></div>
+
+    <div class="result hidden" id="resultBox">
+      <div class="summary" id="summary"></div>
+    </div>
+  </div>
+
+  <!-- ================= Flipkart / Shopsy invoice ================= -->
+  <div class="panel hidden" id="panelFlipkart">
     <div class="step">
-      <div class="step-head"><div class="step-num">3</div><div class="step-title">Invoice date</div></div>
+      <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the Flipkart order sheet</div></div>
       <div class="step-body">
-        <label class="field-label" for="invoiceDate">Applied to every row</label>
-        <input type="date" id="invoiceDate">
+        <div class="drop" id="dropZone3">
+          <input type="file" id="fileInput3" accept=".xlsx,.xls">
+          <div class="placeholder" id="dropText3">Click to choose your Flipkart / Shopsy order tracking .xlsx file</div>
+          <div class="fname" id="fileName3"></div>
+        </div>
       </div>
+    </div>
+
+    <div class="row2">
+      <div class="step">
+        <div class="step-head"><div class="step-num">2</div><div class="step-title">Last invoice number</div></div>
+        <div class="step-body">
+          <label class="field-label" for="lastInvoice3">The last number already used</label>
+          <input type="text" id="lastInvoice3" placeholder="SPSY/26-27/00374">
+          <p class="hint">Each new Order Id gets the next number; items of the same order share one number. Remembered separately from Myntra/Meesho.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><div class="step-num">3</div><div class="step-title">Invoice date</div></div>
+        <div class="step-body">
+          <label class="field-label" for="invoiceDate3">Optional override</label>
+          <input type="date" id="invoiceDate3">
+          <p class="hint">Leave empty to use each order's own Invoice Date from the Flipkart sheet (recommended).</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="convert" id="convertBtn3" disabled>Upload a file to get started</button>
+    <div class="status" id="status3"></div>
+
+    <div class="result hidden" id="resultBox3">
+      <div class="summary" id="summary3"></div>
     </div>
   </div>
 
-  <button class="convert" id="convertBtn" disabled>Upload a file to get started</button>
-  <div class="status" id="status"></div>
-
-  <div class="result hidden" id="resultBox">
-    <div class="summary" id="summary"></div>
-  </div>
-  </div>
-
+  <!-- ================= Payment receipt ================= -->
   <div class="panel hidden" id="panelPayment">
     <div class="step">
       <div class="step-head"><div class="step-num">1</div><div class="step-title">Upload the settlement report</div></div>
@@ -233,6 +292,81 @@
 </div>
 
 <script>
+// ============ Shared helpers: remember values + save files ============
+function loadVal(key){
+  try{ const v = localStorage.getItem(key); if(v) return Promise.resolve(v); }catch(e){}
+  try{
+    if(window.storage && typeof window.storage.get === 'function'){
+      return window.storage.get(key).then(r => (r && r.value) ? r.value : null).catch(() => null);
+    }
+  }catch(e){}
+  return Promise.resolve(null);
+}
+function saveVal(key, value){
+  try{ localStorage.setItem(key, value); }catch(e){}
+  try{
+    if(window.storage && typeof window.storage.set === 'function'){
+      window.storage.set(key, value, false).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+let downloadsNs;           // undefined = not asked yet, null = unavailable
+let downloadsPromise = null;
+function getDownloads(){
+  if(downloadsNs !== undefined) return Promise.resolve(downloadsNs);
+  if(!downloadsPromise){
+    try{
+      if(window.claude && typeof window.claude.use === 'function'){
+        downloadsPromise = window.claude.use("downloads").then(ns => { downloadsNs = ns || null; return downloadsNs; }).catch(() => { downloadsNs = null; return null; });
+      }else{
+        downloadsNs = null; return Promise.resolve(null);
+      }
+    }catch(e){ downloadsNs = null; return Promise.resolve(null); }
+  }
+  return downloadsPromise;
+}
+getDownloads();
+
+// Saves a workbook: through the Claude viewer's download prompt when available, otherwise a normal browser download.
+async function saveWorkbook(wb, filename){
+  const ns = await getDownloads();
+  if(ns && typeof ns.save === 'function'){
+    const data = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    try{
+      await ns.save({ filename: filename, data: new Blob([data]) });
+      return "saved";
+    }catch(err){
+      if(err && err.code === "declined") return "declined";
+      if(err && err.code === "rate_limited") return "rate_limited";
+      // any other code: fall through to plain download
+    }
+  }
+  XLSX.writeFile(wb, filename);
+  return "saved";
+}
+function saveNote(result){
+  if(result === "declined") return '<div class="warn">Download was cancelled. Click the convert button again to get the file.</div>';
+  if(result === "rate_limited") return '<div class="warn">A download prompt is already open — finish it or wait a moment, then click convert again.</div>';
+  return "";
+}
+
+function bindDrop(zone, input, onFile){
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', e => {
+    if(e.dataTransfer.files.length){ onFile(e.dataTransfer.files[0]); }
+  });
+  input.addEventListener('change', () => { if(input.files.length) onFile(input.files[0]); });
+}
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+// ============ Common constants ============
 const HEADERS = ["Invoice Number","Invoice Date","Customer Name","GST Treatment","GST Identification Number (GSTIN)","Place of Supply","Sales order id","Payment Terms","Payment Terms Label","Due Date","Currency Code","Exchange Rate","Account","SKU","Item Name","Item Desc","Item Type","HSN/SAC","Quantity","Usage unit","Item Price","Is Inclusive Tax","Item Tax","Item Tax Type","Item Tax %","Is Discount Before Tax","Entity Discount Percent","Entity Discount Amount","Discount","Discount Amount","Adjustment","Adjustment Description","Notes","Terms & Conditions","E-Commerce Operator Name","E-Commerce Operator GSTIN","Branch Name","Email","MOBILE NO","Billing Address Line 1","Billing Address Line 2","Billing city","Billing State","Billing Country","Billing Pin code","Shipping Address Line 1","Shipping Address Line 2","Shipping City","Shipping State","Shipping Country","Shipping Pin code","Accounts Receivable","Ack No.:","IRN :","Invoice Status","Salesperson","Import Check"];
 
 const TERMS_TEXT = "The purchased material is strictly for self-consumption and not for resale. Payment Terms: Payments must be made within the due date; late payments will incur an 18% per annum interest. Taxes & Duties: GST and other applicable taxes are extra as per government norms. Order Confirmation: Once an order is confirmed, it cannot be canceled or modified. Claims & Returns: Any claims for defects or damages must be reported within 48 hours.";
@@ -241,6 +375,7 @@ const ECOM_OPERATOR_NAME = "Picknpack ecommerce";
 const ECOM_OPERATOR_GSTIN = "07AAMCP7214N1ZW";
 const BRANCH_NAME = "Delhi- Online";
 const SALESPERSON = "PICKNPACK";
+const SELLER_STATE = "Delhi"; // Flipkart sheet has no seller-state column; Picknpack ships from Delhi
 
 // Zoho's Place of Supply field only accepts this exact fixed set of 2-letter codes.
 const ZOHO_VALID_CODES = new Set(["AN","AD","AR","AS","BR","CH","CG","DN","DD","DL","GA","GJ","HR","HP","JK","JH","KA","KL","LD","MP","MH","MN","ML","MZ","NL","OD","PY","PB","RJ","SK","TN","TS","TR","UP","UK","WB"]);
@@ -283,6 +418,7 @@ const STATE_CANON = {
   "andaman and nicobar islands":"Andaman and Nicobar Islands","chandigarh":"Chandigarh",
   "dadra and nagar haveli":"Dadra and Nagar Haveli","daman and diu":"Daman and Diu",
   "dadra and nagar haveli and daman and diu":"Dadra and Nagar Haveli and Daman and Diu","delhi":"Delhi",
+  "new delhi":"Delhi","nct of delhi":"Delhi","orissa":"Odisha",
   "jammu and kashmir":"Jammu and Kashmir","lakshadweep":"Lakshadweep",
   "puducherry":"Puducherry","pondicherry":"Puducherry","ladakh":"Ladakh"
 };
@@ -291,9 +427,6 @@ function canonState(s){
   return STATE_CANON[key] || cleanStr(s);
 }
 
-// Some exports give 2-letter state codes directly instead of full names (e.g. "UP", "MH").
-// This maps any such abbreviation (including legacy ones like "CT") to the full state name,
-// so the OFFICIAL Zoho code is always looked up fresh rather than trusting the source's own code.
 const STATE_CODE_TO_NAME = {
   "ad":"Andhra Pradesh","ar":"Arunachal Pradesh","as":"Assam","br":"Bihar",
   "cg":"Chhattisgarh","ct":"Chhattisgarh",
@@ -305,8 +438,6 @@ const STATE_CODE_TO_NAME = {
   "dn":"Dadra and Nagar Haveli","dd":"Daman and Diu",
   "dl":"Delhi","jk":"Jammu and Kashmir","la":"Ladakh","ld":"Lakshadweep","py":"Puducherry"
 };
-// Resolves a state value (full name OR 2-letter code) to {code, name, zohoValid}.
-// The code always comes from STATE_MAP (the official Zoho list) — never echoed straight from the source.
 function resolveState(raw){
   let fullName = null;
   const key = normState(raw);
@@ -330,9 +461,18 @@ function cleanStr(v){
 }
 function isBlankish(v){
   const s = cleanStr(v).toLowerCase();
-  return s === "" || s === "-" || s === "na" || s === "n/a" || s === "nan" || s === "null";
+  return s === "" || s === "-" || s === "na" || s === "n/a" || s === "n.a" || s === "n.a." || s === "nan" || s === "null" || s === "none";
 }
 
+// ============ Tab switching ============
+document.querySelectorAll('.tabbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('hidden', p.id !== btn.dataset.panel));
+  });
+});
+
+// ============ Myntra / Meesho invoice module ============
 let workbookFile = null;
 
 const dropZone = document.getElementById('dropZone');
@@ -346,15 +486,9 @@ const summaryEl = document.getElementById('summary');
 const lastInvoiceInput = document.getElementById('lastInvoice');
 const invoiceDateInput = document.getElementById('invoiceDate');
 
-invoiceDateInput.value = new Date().toISOString().slice(0,10);
+invoiceDateInput.value = todayISO();
 
-dropZone.addEventListener('click', () => fileInput.click());
-['dragover'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add('drag'); }));
-['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove('drag'); }));
-dropZone.addEventListener('drop', e => {
-  if(e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
-});
-fileInput.addEventListener('change', () => { if(fileInput.files.length) handleFile(fileInput.files[0]); });
+bindDrop(dropZone, fileInput, handleFile);
 
 function handleFile(file){
   workbookFile = file;
@@ -366,14 +500,7 @@ function handleFile(file){
   statusEl.textContent = "";
 }
 
-// Prefill last invoice number from previous run (personal storage, when available)
-(async function prefill(){
-  try{
-    if(!window.storage || typeof window.storage.get !== 'function') return;
-    const r = await window.storage.get('last_invoice_number');
-    if(r && r.value) lastInvoiceInput.value = r.value;
-  }catch(e){ /* no saved value yet, ignore */ }
-})();
+loadVal('last_invoice_number').then(v => { if(v && !lastInvoiceInput.value) lastInvoiceInput.value = v; });
 
 convertBtn.addEventListener('click', () => {
   if(!workbookFile) return;
@@ -381,12 +508,10 @@ convertBtn.addEventListener('click', () => {
   resultBox.classList.add('hidden');
   const reader = new FileReader();
   reader.onload = (e) => {
-    try{
-      processWorkbook(e.target.result);
-    }catch(err){
+    Promise.resolve().then(() => processWorkbook(e.target.result)).catch(err => {
       console.error(err);
       showError("Something went wrong: " + err.message + ". Please check the file format or try again.");
-    }
+    });
   };
   reader.onerror = () => showError("Could not read the file. Please try again.");
   reader.readAsArrayBuffer(workbookFile);
@@ -398,7 +523,7 @@ function showError(msg){
   summaryEl.innerHTML = '<div class="err">' + msg + '</div>';
 }
 
-function processWorkbook(arrayBuffer){
+async function processWorkbook(arrayBuffer){
   const lastInvRaw = lastInvoiceInput.value.trim();
   const invDate = invoiceDateInput.value;
   if(!lastInvRaw){ showError("Please enter the last invoice number first (e.g. ECOM/26-27/17218)."); return; }
@@ -441,7 +566,7 @@ function processWorkbook(arrayBuffer){
     hsn: findKey(sampleKeys, ["itemhsn"])
   };
 
-  const OPTIONAL_FIELDS = new Set(["voucher","date"]); // not every export includes these; not required
+  const OPTIONAL_FIELDS = new Set(["voucher","date"]);
   const missing = Object.entries(K).filter(([k,v]) => v === null && !OPTIONAL_FIELDS.has(k)).map(([k]) => k);
   if(missing.length){
     showError("These columns were not found in the file: " + missing.join(", ") + ". Please upload the original Myntra/Meesho export file.");
@@ -565,7 +690,8 @@ function processWorkbook(arrayBuffer){
   XLSX.utils.book_append_sheet(newWb, newSheet, "zoho formate");
 
   const outName = "zoho_import_" + invDate + ".xlsx";
-  XLSX.writeFile(newWb, outName);
+  statusEl.textContent = "Preparing download...";
+  const saveResult = await saveWorkbook(newWb, outName);
 
   const orderCount = Object.keys(invoiceNoOf).length;
 
@@ -574,42 +700,337 @@ function processWorkbook(arrayBuffer){
   let html = '<h3>Conversion complete ✓</h3>';
   html += '<div class="kv"><span>Total orders (invoices)</span><b>' + orderCount + '</b></div>';
   html += '<div class="kv"><span>Total line items</span><b>' + outRows.length + '</b></div>';
-  html += '<div class="kv"><span>Invoice number range</span><b>' + firstInvoice + ' – ' + lastInvoiceAssigned + '</b></div>';
+  html += '<div class="kv"><span>Invoice number range</span><b>' + escHtml(firstInvoice) + ' – ' + escHtml(lastInvoiceAssigned) + '</b></div>';
   html += '<div class="kv"><span>Invoice date applied</span><b>' + invDate + '</b></div>';
+  html += saveNote(saveResult);
   summaryEl.innerHTML = html;
 
   if(warnings.length){
     const uniqueWarnings = [...new Set(warnings)].slice(0, 15);
     let w = '<div class="warn"><b>' + warnings.length + ' row(s) had an unrecognized state — please check Place of Supply manually:</b><ul>';
-    uniqueWarnings.forEach(x => w += '<li>' + x + '</li>');
+    uniqueWarnings.forEach(x => w += '<li>' + escHtml(x) + '</li>');
     w += '</ul></div>';
     summaryEl.innerHTML += w;
   }
 
-  // remember the last invoice number for next time, if storage is available
-  if(window.storage && typeof window.storage.set === 'function'){
-    window.storage.set('last_invoice_number', lastInvoiceAssigned, false).catch(()=>{});
-  }
+  saveVal('last_invoice_number', lastInvoiceAssigned);
   lastInvoiceInput.value = lastInvoiceAssigned;
 }
 
-// ============ Tab switching ============
-const tabBtnInvoice = document.getElementById('tabBtnInvoice');
-const tabBtnPayment = document.getElementById('tabBtnPayment');
-const panelInvoice = document.getElementById('panelInvoice');
-const panelPayment = document.getElementById('panelPayment');
-tabBtnInvoice.addEventListener('click', () => {
-  tabBtnInvoice.classList.add('active');
-  tabBtnPayment.classList.remove('active');
-  panelInvoice.classList.remove('hidden');
-  panelPayment.classList.add('hidden');
+// ============ Flipkart / Shopsy invoice module ============
+// Same 54 columns as the Flipkart sample import file.
+const HEADERS_FK = HEADERS.slice(0, HEADERS.indexOf("IRN :") + 1);
+
+let workbookFile3 = null;
+const dropZone3 = document.getElementById('dropZone3');
+const fileInput3 = document.getElementById('fileInput3');
+const fileNameEl3 = document.getElementById('fileName3');
+const dropText3 = document.getElementById('dropText3');
+const convertBtn3 = document.getElementById('convertBtn3');
+const statusEl3 = document.getElementById('status3');
+const resultBox3 = document.getElementById('resultBox3');
+const summaryEl3 = document.getElementById('summary3');
+const lastInvoiceInput3 = document.getElementById('lastInvoice3');
+const invoiceDateInput3 = document.getElementById('invoiceDate3');
+
+bindDrop(dropZone3, fileInput3, handleFile3);
+
+function handleFile3(file){
+  workbookFile3 = file;
+  fileNameEl3.textContent = file.name;
+  dropText3.textContent = "Click to change file:";
+  convertBtn3.disabled = false;
+  convertBtn3.textContent = "Convert & Download Zoho File";
+  resultBox3.classList.add('hidden');
+  statusEl3.textContent = "";
+}
+
+loadVal('last_invoice_number_flipkart').then(v => { if(v && !lastInvoiceInput3.value) lastInvoiceInput3.value = v; });
+
+convertBtn3.addEventListener('click', () => {
+  if(!workbookFile3) return;
+  statusEl3.textContent = "Reading file...";
+  resultBox3.classList.add('hidden');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    Promise.resolve().then(() => processFlipkartWorkbook(e.target.result)).catch(err => {
+      console.error(err);
+      showError3("Something went wrong: " + err.message + ". Please check the file format or try again.");
+    });
+  };
+  reader.onerror = () => showError3("Could not read the file. Please try again.");
+  reader.readAsArrayBuffer(workbookFile3);
 });
-tabBtnPayment.addEventListener('click', () => {
-  tabBtnPayment.classList.add('active');
-  tabBtnInvoice.classList.remove('active');
-  panelPayment.classList.remove('hidden');
-  panelInvoice.classList.add('hidden');
-});
+
+function showError3(msg){
+  statusEl3.textContent = "";
+  resultBox3.classList.remove('hidden');
+  summaryEl3.innerHTML = '<div class="err">' + msg + '</div>';
+}
+
+// Flipkart dates come as Excel serial numbers, JS dates, or text like 07/31/26 (mm/dd/yy).
+function fkDateToISO(v){
+  if(v === undefined || v === null || v === "") return "";
+  if(typeof v === "number"){
+    const p = XLSX.SSF.parse_date_code(v);
+    if(!p) return "";
+    return p.y + "-" + String(p.m).padStart(2,"0") + "-" + String(p.d).padStart(2,"0");
+  }
+  if(v instanceof Date && !isNaN(v)){
+    return v.getFullYear() + "-" + String(v.getMonth()+1).padStart(2,"0") + "-" + String(v.getDate()).padStart(2,"0");
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1] + "-" + m[2].padStart(2,"0") + "-" + m[3].padStart(2,"0");
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); // mm/dd/yy as per Flipkart header
+  if(m){
+    let y = m[3]; if(y.length === 2) y = "20" + y;
+    return y + "-" + m[1].padStart(2,"0") + "-" + m[2].padStart(2,"0");
+  }
+  return "";
+}
+function numOrNull(v){
+  if(typeof v === "number") return v;
+  const s = cleanStr(v).replace(/[,₹\s%]/g, "");
+  if(s === "" || isNaN(Number(s))) return null;
+  return Number(s);
+}
+function round2(n){ return Math.round(n * 100) / 100; }
+
+async function processFlipkartWorkbook(arrayBuffer){
+  const lastInvRaw = lastInvoiceInput3.value.trim();
+  const overrideDate = invoiceDateInput3.value; // may be empty
+  if(!lastInvRaw){ showError3("Please enter the last invoice number first (e.g. SPSY/26-27/00374)."); return; }
+
+  const m = lastInvRaw.match(/^(.*?)(\d+)\s*$/);
+  if(!m){ showError3("Couldn't find a number at the end of the invoice number. Please use a format like SPSY/26-27/00374."); return; }
+  const prefix = m[1];
+  const padLen = m[2].length;
+  let counter = parseInt(m[2], 10) + 1;
+
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const sheetName = wb.SheetNames.find(n => /order/i.test(n)) || wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:""});
+  if(!rows.length){ showError3("No data found in this file."); return; }
+
+  // collect every header seen (some columns may be blank in the first row)
+  const keySet = new Set();
+  rows.slice(0, 50).forEach(r => Object.keys(r).forEach(k => keySet.add(k)));
+  const sampleKeys = [...keySet];
+
+  const K = {
+    orderId: findKey(sampleKeys, ["orderid"]),
+    product: findKey(sampleKeys, ["product","productname","producttitle"]),
+    sku: findKey(sampleKeys, ["skucode","sku"]),
+    orderState: findKey(sampleKeys, ["orderstate","orderstatus"]),
+    qty: findKey(sampleKeys, ["quantity","qty"]),
+    invoiceAmount: findKey(sampleKeys, ["invoiceamount"]),
+    invoiceDate: findKey(sampleKeys, ["invoicedatemmddyy","invoicedate"]),
+    cgst: findKey(sampleKeys, ["cgst"]),
+    sgst: findKey(sampleKeys, ["sgst"]),
+    igst: findKey(sampleKeys, ["igst"]),
+    buyerName: findKey(sampleKeys, ["buyername"]),
+    shipName: findKey(sampleKeys, ["shiptoname"]),
+    addr1: findKey(sampleKeys, ["addressline1"]),
+    addr2: findKey(sampleKeys, ["addressline2"]),
+    city: findKey(sampleKeys, ["city"]),
+    state: findKey(sampleKeys, ["state"]),
+    pin: findKey(sampleKeys, ["pincode","pin"]),
+    phone: findKey(sampleKeys, ["phoneno","phone","phonenumber"]),
+    email: findKey(sampleKeys, ["emailid","email"]),
+    gstin: findKey(sampleKeys, ["customergstin","gstin"]),
+    hsn: findKey(sampleKeys, ["hsn","hsncode"])
+  };
+  const OPTIONAL = new Set(["orderState","cgst","sgst","igst","buyerName","addr2","email","gstin","invoiceDate"]);
+  const missing = Object.entries(K).filter(([k,v]) => v === null && !OPTIONAL.has(k)).map(([k]) => k);
+  if(missing.length){
+    showError3("These columns were not found in the file: " + missing.join(", ") + ". Please upload the original Flipkart / Shopsy order sheet.");
+    return;
+  }
+
+  const invoiceNoOf = {};
+  const outRows = [];
+  const warnings = [];
+  let skipped = 0;
+  let firstInvoice = null, lastInvoiceAssigned = null;
+  const datesUsed = new Set();
+
+  rows.forEach((row) => {
+    const orderId = cleanStr(row[K.orderId]);
+    if(!orderId){ skipped++; return; } // blank / junk row
+
+    if(!invoiceNoOf[orderId]){
+      const invNo = prefix + String(counter).padStart(padLen, "0");
+      invoiceNoOf[orderId] = invNo;
+      if(!firstInvoice) firstInvoice = invNo;
+      lastInvoiceAssigned = invNo;
+      counter++;
+    }
+    const invoiceNumber = invoiceNoOf[orderId];
+
+    // Invoice date: override if chosen, else the row's own Flipkart invoice date
+    let invDate = overrideDate || (K.invoiceDate ? fkDateToISO(row[K.invoiceDate]) : "");
+    if(!invDate){
+      invDate = todayISO();
+      warnings.push("Order " + orderId + ": no Invoice Date in the file — today's date used.");
+    }
+    datesUsed.add(invDate);
+
+    const orderState = K.orderState ? cleanStr(row[K.orderState]) : "";
+    if(/cancel|return|rto/i.test(orderState)){
+      warnings.push("Order " + orderId + ": Order State is '" + orderState + "' — included, please confirm it should be invoiced.");
+    }
+
+    // GST
+    const gstinRaw = K.gstin ? cleanStr(row[K.gstin]) : "";
+    const gstin = isBlankish(gstinRaw) ? "" : gstinRaw.toUpperCase();
+    const gstTreatment = gstin ? "business_gst" : "business_none";
+
+    // State / Place of supply
+    const stateRaw = cleanStr(row[K.state]);
+    const stateInfo = resolveState(stateRaw);
+    const placeCode = (stateInfo && stateInfo.zohoValid) ? stateInfo.code : "";
+    const stateOut = stateInfo ? stateInfo.name : stateRaw;
+    if(!stateInfo){
+      warnings.push("Order " + orderId + ": state '" + stateRaw + "' was not recognized — Place of Supply left blank.");
+    }else if(!stateInfo.zohoValid){
+      warnings.push("Order " + orderId + ": '" + stateInfo.name + "' has no Zoho Place of Supply code — left blank.");
+    }
+
+    // Tax: CGST+SGST filled → intra-state GST group; IGST filled → IGST. Fallback: compare with seller state (Delhi).
+    const cgst = K.cgst ? numOrNull(row[K.cgst]) : null;
+    const sgst = K.sgst ? numOrNull(row[K.sgst]) : null;
+    const igst = K.igst ? numOrNull(row[K.igst]) : null;
+    let sameState, gstPct;
+    if(cgst !== null && sgst !== null && (cgst + sgst) > 0){
+      sameState = true; gstPct = cgst + sgst;
+    }else if(igst !== null && igst > 0){
+      sameState = false; gstPct = igst;
+    }else{
+      sameState = stateInfo ? normState(stateInfo.name) === normState(SELLER_STATE) : false;
+      gstPct = 18;
+      warnings.push("Order " + orderId + ": no CGST/SGST/IGST rate in the file — 18% assumed.");
+    }
+    const itemTax = (sameState ? "GST" : "IGST") + gstPct;
+    const itemTaxType = sameState ? "Tax Group" : "ItemAmount";
+
+    // Customer: Ship-to name (fallback Buyer name) + phone
+    const shipName = cleanStr(row[K.shipName]);
+    const buyerName = K.buyerName ? cleanStr(row[K.buyerName]) : "";
+    const name = shipName || (/flipkart customer/i.test(buyerName) ? "" : buyerName) || "Flipkart Customer";
+    const phone = cleanStr(row[K.phone]);
+    const combinedName = phone ? (name + "-" + phone) : name;
+
+    // Price: Invoice Amount is tax-inclusive line total → per-unit price
+    const qtyNum = numOrNull(row[K.qty]) || 1;
+    const invAmt = numOrNull(row[K.invoiceAmount]);
+    if(invAmt === null) warnings.push("Order " + orderId + ": Invoice Amount missing — Item Price left blank.");
+    const itemPrice = invAmt === null ? "" : round2(invAmt / qtyNum);
+
+    const addr1 = cleanStr(row[K.addr1]);
+    const addr2Raw = K.addr2 ? cleanStr(row[K.addr2]) : "";
+    const addr2 = isBlankish(addr2Raw) ? "" : addr2Raw;
+    const city = cleanStr(row[K.city]);
+    const pin = cleanStr(row[K.pin]);
+    const emailRaw = K.email ? cleanStr(row[K.email]) : "";
+    const email = isBlankish(emailRaw) ? "" : emailRaw;
+
+    const out = {};
+    out["Invoice Number"] = invoiceNumber;
+    out["Invoice Date"] = invDate;
+    out["Customer Name"] = combinedName;
+    out["GST Treatment"] = gstTreatment;
+    out["GST Identification Number (GSTIN)"] = gstin;
+    out["Place of Supply"] = placeCode;
+    out["Sales order id"] = orderId;
+    out["Payment Terms"] = 0;
+    out["Payment Terms Label"] = "Paid";
+    out["Due Date"] = invDate;
+    out["Currency Code"] = "INR";
+    out["Exchange Rate"] = 1;
+    out["Account"] = "Sales";
+    out["SKU"] = cleanStr(row[K.sku]);
+    out["Item Name"] = cleanStr(row[K.product]);
+    out["Item Desc"] = "";
+    out["Item Type"] = "goods";
+    out["HSN/SAC"] = toNumStr(row[K.hsn]);
+    out["Quantity"] = qtyNum;
+    out["Usage unit"] = "pcs";
+    out["Item Price"] = itemPrice;
+    out["Is Inclusive Tax"] = true;
+    out["Item Tax"] = itemTax;
+    out["Item Tax Type"] = itemTaxType;
+    out["Item Tax %"] = gstPct;
+    out["Is Discount Before Tax"] = true;
+    out["Entity Discount Percent"] = 0;
+    out["Entity Discount Amount"] = 0;
+    out["Discount"] = 0;
+    out["Discount Amount"] = 0;
+    out["Adjustment"] = 0;
+    out["Adjustment Description"] = "Adjustment";
+    out["Notes"] = NOTES_TEXT;
+    out["Terms & Conditions"] = TERMS_TEXT;
+    out["E-Commerce Operator Name"] = ECOM_OPERATOR_NAME;
+    out["E-Commerce Operator GSTIN"] = ECOM_OPERATOR_GSTIN;
+    out["Branch Name"] = BRANCH_NAME;
+    out["Email"] = email;
+    out["MOBILE NO"] = phone;
+    out["Billing Address Line 1"] = addr1;
+    out["Billing Address Line 2"] = addr2;
+    out["Billing city"] = city;
+    out["Billing State"] = stateOut;
+    out["Billing Country"] = "India";
+    out["Billing Pin code"] = pin;
+    out["Shipping Address Line 1"] = addr1;
+    out["Shipping Address Line 2"] = addr2;
+    out["Shipping City"] = city;
+    out["Shipping State"] = stateOut;
+    out["Shipping Country"] = "India";
+    out["Shipping Pin code"] = pin;
+    out["Accounts Receivable"] = "Accounts Receivable";
+    out["Ack No.:"] = "";
+    out["IRN :"] = "";
+
+    outRows.push(out);
+  });
+
+  if(!outRows.length){ showError3("No orders with an Order Id were found in this file."); return; }
+
+  const newSheet = XLSX.utils.json_to_sheet(outRows, {header: HEADERS_FK});
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, newSheet, "zoho formate");
+
+  const baseName = workbookFile3.name.replace(/\.[^.]+$/, "").replace(/[^\w\-.]+/g, "_");
+  const outName = "zoho_import_" + baseName + "_" + (overrideDate || todayISO()) + ".xlsx";
+  statusEl3.textContent = "Preparing download...";
+  const saveResult = await saveWorkbook(newWb, outName);
+
+  const orderCount = Object.keys(invoiceNoOf).length;
+  const dates = [...datesUsed].sort();
+
+  statusEl3.textContent = "";
+  resultBox3.classList.remove('hidden');
+  let html = '<h3>Conversion complete ✓</h3>';
+  html += '<div class="kv"><span>Total orders (invoices)</span><b>' + orderCount + '</b></div>';
+  html += '<div class="kv"><span>Total line items</span><b>' + outRows.length + '</b></div>';
+  html += '<div class="kv"><span>Invoice number range</span><b>' + escHtml(firstInvoice) + ' – ' + escHtml(lastInvoiceAssigned) + '</b></div>';
+  html += '<div class="kv"><span>Invoice date(s)</span><b>' + (overrideDate ? overrideDate + ' (override)' : dates.join(', ')) + '</b></div>';
+  if(skipped) html += '<div class="kv"><span>Blank rows skipped</span><b>' + skipped + '</b></div>';
+  html += saveNote(saveResult);
+  summaryEl3.innerHTML = html;
+
+  if(warnings.length){
+    const uniqueWarnings = [...new Set(warnings)];
+    let w = '<div class="warn"><b>' + uniqueWarnings.length + ' thing(s) to check before importing:</b><ul>';
+    uniqueWarnings.slice(0, 20).forEach(x => w += '<li>' + escHtml(x) + '</li>');
+    if(uniqueWarnings.length > 20) w += '<li>…and ' + (uniqueWarnings.length - 20) + ' more</li>';
+    w += '</ul></div>';
+    summaryEl3.innerHTML += w;
+  }
+
+  saveVal('last_invoice_number_flipkart', lastInvoiceAssigned);
+  lastInvoiceInput3.value = lastInvoiceAssigned;
+}
 
 // ============ Payment Receipt module ============
 const HEADERS2 = ["Payment Number Prefix","Payment Number Suffix","Customer Name","Place of Supply","GST Treatment","GST Identification Number (GSTIN)","Payment Type","Description of Supply","Tax Name","Tax Percentage","Tax Type","Date","Mode","Exchange Rate","Amount","Description","Bank Charges","Tax Account","Deposit To","Reference Number","Invoice Number","Amount Applied to Invoice","Invoice Amount","Withholding Tax Amount","Branch Name"];
@@ -637,16 +1058,10 @@ const prefixInput = document.getElementById('prefixInput');
 const suffixInput = document.getElementById('suffixInput');
 const paymentDateInput = document.getElementById('paymentDate');
 
-paymentDateInput.value = new Date().toISOString().slice(0,10);
+paymentDateInput.value = todayISO();
 prefixInput.value = DEFAULT_PREFIX;
 
-dropZone2.addEventListener('click', () => fileInput2.click());
-['dragover'].forEach(evt => dropZone2.addEventListener(evt, e => { e.preventDefault(); dropZone2.classList.add('drag'); }));
-['dragleave','drop'].forEach(evt => dropZone2.addEventListener(evt, e => { e.preventDefault(); dropZone2.classList.remove('drag'); }));
-dropZone2.addEventListener('drop', e => {
-  if(e.dataTransfer.files.length){ fileInput2.files = e.dataTransfer.files; handleFile2(e.dataTransfer.files[0]); }
-});
-fileInput2.addEventListener('change', () => { if(fileInput2.files.length) handleFile2(fileInput2.files[0]); });
+bindDrop(dropZone2, fileInput2, handleFile2);
 
 function handleFile2(file){
   workbookFile2 = file;
@@ -658,14 +1073,7 @@ function handleFile2(file){
   statusEl2.textContent = "";
 }
 
-// Prefill starting payment number from previous run (personal storage, when available)
-(async function prefillSuffix(){
-  try{
-    if(!window.storage || typeof window.storage.get !== 'function') return;
-    const r = await window.storage.get('last_payment_suffix');
-    if(r && r.value) suffixInput.value = r.value;
-  }catch(e){ /* no saved value yet, ignore */ }
-})();
+loadVal('last_payment_suffix').then(v => { if(v && !suffixInput.value) suffixInput.value = v; });
 
 convertBtn2.addEventListener('click', () => {
   if(!workbookFile2) return;
@@ -673,12 +1081,10 @@ convertBtn2.addEventListener('click', () => {
   resultBox2.classList.add('hidden');
   const reader = new FileReader();
   reader.onload = (e) => {
-    try{
-      processPaymentWorkbook(e.target.result);
-    }catch(err){
+    Promise.resolve().then(() => processPaymentWorkbook(e.target.result)).catch(err => {
       console.error(err);
       showError2("Something went wrong: " + err.message + ". Please check the file format or try again.");
-    }
+    });
   };
   reader.onerror = () => showError2("Could not read the file. Please try again.");
   reader.readAsArrayBuffer(workbookFile2);
@@ -690,7 +1096,7 @@ function showError2(msg){
   summaryEl2.innerHTML = '<div class="err">' + msg + '</div>';
 }
 
-function processPaymentWorkbook(arrayBuffer){
+async function processPaymentWorkbook(arrayBuffer){
   const prefix = (prefixInput.value || DEFAULT_PREFIX).trim();
   const suffixRaw = suffixInput.value.trim();
   const dateVal = paymentDateInput.value;
@@ -763,20 +1169,19 @@ function processPaymentWorkbook(arrayBuffer){
   const newWb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(newWb, newSheet, "Sheet1");
   const outName = "cashfree_payment_import_" + dateVal + ".xlsx";
-  XLSX.writeFile(newWb, outName);
+  statusEl2.textContent = "Preparing download...";
+  const saveResult = await saveWorkbook(newWb, outName);
 
   statusEl2.textContent = "";
   resultBox2.classList.remove('hidden');
   let html2 = '<h3>Conversion complete ✓</h3>';
   html2 += '<div class="kv"><span>Total payments</span><b>' + outRows.length + '</b></div>';
-  html2 += '<div class="kv"><span>Payment number range</span><b>' + prefix + firstSuffix + ' – ' + prefix + lastSuffix + '</b></div>';
+  html2 += '<div class="kv"><span>Payment number range</span><b>' + escHtml(prefix + firstSuffix) + ' – ' + escHtml(prefix + lastSuffix) + '</b></div>';
   html2 += '<div class="kv"><span>Payment date applied</span><b>' + dateStr + '</b></div>';
+  html2 += saveNote(saveResult);
   summaryEl2.innerHTML = html2;
 
-  // remember where to continue next time, if storage is available
-  if(window.storage && typeof window.storage.set === 'function'){
-    window.storage.set('last_payment_suffix', String(lastSuffix + 1), false).catch(()=>{});
-  }
+  saveVal('last_payment_suffix', String(lastSuffix + 1));
   suffixInput.value = String(lastSuffix + 1);
 }
 </script>
